@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+
+  airflow-webserver:
+    build: .
+    depends_on:
+      - postgres
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./etl_project:/opt/airflow/etl_project
+    ports:
+      - "8080:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__FERNET_KEY=6F48RZBuDdQaSk4MEJ88LSGJ12dxbCdBVSgB4V5Eev0=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=my_ultra_secret_key_123
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - _AIRFLOW_WWW_USER_USERNAME=admin
+      - _AIRFLOW_WWW_USER_PASSWORD=admin
+    command: bash -c "airflow db upgrade && airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com && airflow webserver"
+
+  airflow-scheduler:
+    build: .
+    depends_on:
+      - airflow-webserver
+      - postgres
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./etl_project:/opt/airflow/etl_project
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__FERNET_KEY=6F48RZBuDdQaSk4MEJ88LSGJ12dxbCdBVSgB4V5Eev0=
+      - AIRFLOW__WEBSERVER__SECRET_KEY=my_ultra_secret_key_123
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    command: bash -c "airflow scheduler"
+
+volumes:
+  postgres-db-volume:
